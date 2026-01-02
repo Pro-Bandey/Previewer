@@ -1,0 +1,650 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Universal File Previewer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <!-- Highlight.js for syntax highlighting -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github-dark.min.css" id="hljs-theme">
+  <!-- Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  
+  <style>
+    :root {
+      --bg: #0f1218;
+      --bg-soft: #141824;
+      --bg-softer: #1a2030;
+      --text: #e6e9ef;
+      --muted: #a9b0be;
+      --primary: #6ea8fe;
+      --accent: #7bd389;
+      --danger: #ff6b6b;
+      --warning: #f7b267;
+      --border: #2a3244;
+      --shadow: 0 10px 30px rgba(0,0,0,0.35);
+      --radius: 8px;
+    }
+    
+    [data-theme="light"] {
+      --bg: #f8fafc;
+      --bg-soft: #ffffff;
+      --bg-softer: #f1f5f9;
+      --text: #1e293b;
+      --muted: #64748b;
+      --primary: #2563eb;
+      --accent: #16a34a;
+      --danger: #dc2626;
+      --warning: #ca8a04;
+      --border: #e2e8f0;
+      --shadow: 0 10px 30px rgba(0,0,0,0.05);
+    }
+
+    * { box-sizing: border-box; }
+    body, html { height: 100%; margin: 0; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; }
+
+    /* Main Layout */
+    .app-container {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      grid-template-rows: 60px 1fr;
+      grid-template-areas: "sidebar topbar" "sidebar content";
+      height: 100vh;
+    }
+
+    /* Topbar & Search */
+    .topbar {
+      grid-area: topbar;
+      background: var(--bg-soft);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+    }
+
+    .search-container {
+      display: flex;
+      align-items: center;
+      background: var(--bg-softer);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 6px 12px;
+      width: 400px;
+    }
+
+    .search-container input {
+      background: transparent;
+      border: none;
+      color: var(--text);
+      margin-left: 8px;
+      width: 100%;
+      outline: none;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      grid-area: sidebar;
+      background: var(--bg-soft);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+    }
+
+    .brand { font-weight: 700; font-size: 1.2rem; display: flex; align-items: center; gap: 10px; margin-bottom: 30px; }
+    .brand i { color: var(--primary); font-size: 1.5rem; }
+
+    .nav-section { margin-bottom: 25px; }
+    .nav-section h3 { font-size: 0.75rem; text-transform: uppercase; color: var(--muted); letter-spacing: 1px; margin-bottom: 12px; }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      padding: 8px 12px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      margin-bottom: 4px;
+      transition: all 0.2s;
+      font-size: 0.9rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .file-item:hover { background: var(--bg-softer); }
+    .file-item.active { background: var(--primary); color: white; }
+    .file-item i { margin-right: 10px; }
+
+    /* Content Area & Tabs */
+    .main-content {
+      grid-area: content;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .tab-bar {
+      display: flex;
+      background: var(--bg-soft);
+      padding: 5px 10px 0;
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+    }
+
+    .tab {
+      padding: 8px 16px;
+      background: var(--bg-softer);
+      border: 1px solid var(--border);
+      border-bottom: none;
+      border-radius: 8px 8px 0 0;
+      margin-right: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      min-width: 120px;
+      user-select: none;
+      transition: background 0.2s;
+    }
+    .tab.active { background: var(--bg); border-top: 2px solid var(--primary); }
+    .tab .close-tab { font-size: 14px; color: var(--muted); border-radius: 50%; padding: 2px; }
+    .tab .close-tab:hover { background: var(--danger); color: white; }
+
+    .viewer-area { flex: 1; padding: 20px; overflow-y: auto; position: relative; }
+
+    /* File View Styles */
+    .dropzone {
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      transition: all 0.3s;
+    }
+    .dropzone.drag-over { border-color: var(--primary); background: rgba(110, 168, 254, 0.1); }
+
+    /* CSV Table */
+    .table-container { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; background: var(--bg-soft); font-size: 0.9rem; }
+    th { background: var(--bg-softer); text-align: left; padding: 12px; cursor: pointer; border-bottom: 2px solid var(--border); }
+    th:hover { background: var(--border); }
+    td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+
+    /* VCF Cards */
+    .contact-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; }
+    .contact-card { background: var(--bg-soft); border: 1px solid var(--border); border-radius: var(--radius); padding: 15px; position: relative; }
+    .contact-card h4 { margin: 0 0 10px 0; color: var(--primary); }
+    .contact-info { font-size: 0.85rem; margin-bottom: 5px; display: flex; align-items: center; gap: 8px; }
+
+    /* TXT/MD View */
+    pre { margin: 0; border-radius: var(--radius); font-family: 'Fira Code', monospace; }
+    .md-editor-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; height: 100%; }
+    .md-input { background: var(--bg-softer); border: 1px solid var(--border); color: var(--text); padding: 15px; border-radius: var(--radius); resize: none; font-family: 'Fira Code', monospace; }
+    .md-preview { background: var(--bg-soft); border: 1px solid var(--border); padding: 15px; border-radius: var(--radius); overflow-y: auto; line-height: 1.6; }
+    .md-preview h1 { border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+
+    /* Context Menu */
+    .context-menu {
+      position: fixed;
+      background: var(--bg-soft);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      border-radius: var(--radius);
+      padding: 5px 0;
+      z-index: 1000;
+      display: none;
+      min-width: 150px;
+    }
+    .menu-item { padding: 8px 15px; cursor: pointer; font-size: 0.9rem; display: flex; align-items: center; gap: 10px; }
+    .menu-item:hover { background: var(--primary); color: white; }
+
+    /* Controls */
+    .view-controls { display: flex; gap: 10px; margin-bottom: 15px; align-items: center; flex-wrap: wrap; }
+    .btn { background: var(--bg-softer); border: 1px solid var(--border); color: var(--text); padding: 6px 12px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 0.85rem; }
+    .btn:hover { background: var(--border); }
+    .btn-primary { background: var(--primary); border: none; color: white; }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .app-container { grid-template-columns: 1fr; grid-template-areas: "topbar" "content"; }
+      .sidebar { display: none; }
+      .md-editor-container { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-container">
+  <aside class="sidebar">
+    <div class="brand"><i class="ti ti-box-margin"></i> UniView</div>
+    
+    <div class="nav-section">
+      <label class="btn btn-primary" style="width: 100%; justify-content: center;">
+        <i class="ti ti-plus"></i> Open Files
+        <input type="file" id="fileInput" multiple hidden accept=".csv,.vcf,.txt,.md">
+      </label>
+    </div>
+
+    <div class="nav-section" id="openFilesList">
+      <h3>Open Files</h3>
+      <div id="fileList"></div>
+    </div>
+
+    <div class="nav-section">
+      <h3>Metadata</h3>
+      <div id="fileInfo" style="font-size: 0.8rem; color: var(--muted);">Select a file to see info.</div>
+    </div>
+
+    <div style="margin-top: auto;">
+      <button class="btn" id="themeToggle" style="width: 100%;">
+        <i class="ti ti-sun"></i> Toggle Theme
+      </button>
+    </div>
+  </aside>
+
+  <header class="topbar">
+    <div class="search-container">
+      <i class="ti ti-search"></i>
+      <input type="text" id="globalSearch" placeholder="Search in all open files...">
+    </div>
+    <div class="user-settings" style="display: flex; gap: 15px; align-items: center;">
+      <span style="font-size: 0.8rem; color: var(--muted);"><i class="ti ti-keyboard"></i> Ctrl+F Search</span>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <div class="tab-bar" id="tabBar"></div>
+    <div class="viewer-area" id="viewerArea">
+      <div class="dropzone" id="dropzone">
+        <i class="ti ti-cloud-upload" style="font-size: 3rem; margin-bottom: 10px;"></i>
+        <p>Drag and drop CSV, VCF, TXT, or MD files here</p>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Context Menu -->
+<div id="contextMenu" class="context-menu">
+  <div class="menu-item" onclick="handleMenuAction('rename')"><i class="ti ti-edit"></i> Rename</div>
+  <div class="menu-item" onclick="handleMenuAction('export')"><i class="ti ti-download"></i> Download</div>
+  <div class="menu-item" onclick="handleMenuAction('delete')" style="color: var(--danger);"><i class="ti ti-trash"></i> Close File</div>
+</div>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/highlight.min.js"></script>
+
+<script>
+/**
+ * UNIVERSAL FILE PREVIEWER - CORE LOGIC
+ */
+
+const state = {
+  files: [], // Array of {id, name, type, rawData, content, lastModified, size}
+  activeFileId: null,
+  theme: localStorage.getItem('theme') || 'dark',
+  fontSize: 14
+};
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+  applyTheme();
+  setupEventListeners();
+});
+
+function setupEventListeners() {
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+
+  // Drag and Drop
+  ['dragenter', 'dragover'].forEach(e => {
+    dropzone.addEventListener(e, (ev) => {
+      ev.preventDefault();
+      dropzone.classList.add('drag-over');
+    });
+  });
+  ['dragleave', 'drop'].forEach(e => {
+    dropzone.addEventListener(e, (ev) => {
+      ev.preventDefault();
+      dropzone.classList.remove('drag-over');
+      if (ev.type === 'drop') handleFiles(ev.dataTransfer.files);
+    });
+  });
+
+  fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+  
+  document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+  
+  // Search
+  document.getElementById('globalSearch').addEventListener('input', (e) => {
+    renderActiveFile(e.target.value.toLowerCase());
+  });
+
+  // Global Context Menu Close
+  window.addEventListener('click', () => {
+    document.getElementById('contextMenu').style.display = 'none';
+  });
+
+  // Keyboard Shortcuts
+  window.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.key === 'f') {
+      e.preventDefault();
+      document.getElementById('globalSearch').focus();
+    }
+  });
+}
+
+/** FILE HANDLING **/
+
+async function handleFiles(fileList) {
+  for (const file of fileList) {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const extension = file.name.split('.').pop().toLowerCase();
+      const content = e.target.result;
+      
+      const newFile = {
+        id: Date.now() + Math.random().toString(36).substr(2, 9),
+        name: file.name,
+        type: detectFileType(extension, content),
+        rawData: content,
+        content: content,
+        size: (file.size / 1024).toFixed(2) + ' KB',
+        lastModified: new Date(file.lastModified).toLocaleDateString()
+      };
+
+      state.files.push(newFile);
+      setActiveFile(newFile.id);
+      renderUI();
+    };
+    reader.readAsText(file);
+  }
+}
+
+function detectFileType(ext, content) {
+  if (['csv'].includes(ext)) return 'csv';
+  if (['vcf'].includes(ext)) return 'vcf';
+  if (['md', 'markdown'].includes(ext)) return 'md';
+  return 'txt';
+}
+
+/** RENDERING ENGINE **/
+
+function renderUI() {
+  renderTabs();
+  renderSidebar();
+  renderActiveFile();
+}
+
+function renderTabs() {
+  const tabBar = document.getElementById('tabBar');
+  tabBar.innerHTML = '';
+  
+  state.files.forEach(file => {
+    const tab = document.createElement('div');
+    tab.className = `tab ${state.activeFileId === file.id ? 'active' : ''}`;
+    tab.draggable = true;
+    tab.innerHTML = `
+      <i class="ti ti-file-text"></i>
+      <span>${file.name}</span>
+      <i class="ti ti-x close-tab" onclick="closeFile('${file.id}', event)"></i>
+    `;
+    tab.onclick = () => setActiveFile(file.id);
+    tab.oncontextmenu = (e) => showContextMenu(e, file.id);
+    
+    // Simple Tab Drag/Drop Reordering
+    tab.ondragstart = (e) => { e.dataTransfer.setData('fileId', file.id); };
+    tab.ondragover = (e) => e.preventDefault();
+    tab.ondrop = (e) => {
+      const draggedId = e.dataTransfer.getData('fileId');
+      const draggedIdx = state.files.findIndex(f => f.id === draggedId);
+      const targetIdx = state.files.findIndex(f => f.id === file.id);
+      const [removed] = state.files.splice(draggedIdx, 1);
+      state.files.splice(targetIdx, 0, removed);
+      renderTabs();
+    };
+
+    tabBar.appendChild(tab);
+  });
+}
+
+function renderSidebar() {
+  const list = document.getElementById('fileList');
+  const info = document.getElementById('fileInfo');
+  list.innerHTML = '';
+  
+  state.files.forEach(file => {
+    const div = document.createElement('div');
+    div.className = `file-item ${state.activeFileId === file.id ? 'active' : ''}`;
+    div.innerHTML = `<i class="ti ti-file-code"></i> ${file.name}`;
+    div.onclick = () => setActiveFile(file.id);
+    list.appendChild(div);
+  });
+
+  const active = state.files.find(f => f.id === state.activeFileId);
+  if (active) {
+    info.innerHTML = `
+      <div><strong>Type:</strong> ${active.type.toUpperCase()}</div>
+      <div><strong>Size:</strong> ${active.size}</div>
+      <div><strong>Modified:</strong> ${active.lastModified}</div>
+    `;
+  }
+}
+
+function renderActiveFile(query = '') {
+  const container = document.getElementById('viewerArea');
+  const active = state.files.find(f => f.id === state.activeFileId);
+
+  if (!active) {
+    container.innerHTML = `
+      <div class="dropzone" id="dropzone">
+        <i class="ti ti-cloud-upload" style="font-size: 3rem; margin-bottom: 10px;"></i>
+        <p>No file active. Open or drop files to begin.</p>
+      </div>
+    `;
+    // Re-bind dropzone events because innerHTML replaces the element
+    setupEventListeners();
+    return;
+  }
+
+  container.innerHTML = '';
+  
+  // Add controls
+  const controls = document.createElement('div');
+  controls.className = 'view-controls';
+  controls.innerHTML = `
+    <button class="btn" onclick="downloadFile('${active.id}')"><i class="ti ti-download"></i> Export</button>
+    <span style="font-size: 0.8rem; color: var(--muted);">${active.type.toUpperCase()} Mode</span>
+  `;
+  container.appendChild(controls);
+
+  switch(active.type) {
+    case 'csv': renderCSV(active, container, query); break;
+    case 'vcf': renderVCF(active, container, query); break;
+    case 'md': renderMD(active, container); break;
+    default: renderTXT(active, container, query); break;
+  }
+}
+
+/** FORMAT SPECIFIC RENDERERS **/
+
+function renderCSV(file, container, query) {
+  Papa.parse(file.content, {
+    header: true,
+    skipEmptyLines: true,
+    complete: (results) => {
+      const data = results.data;
+      const headers = results.meta.fields;
+      
+      const filtered = query 
+        ? data.filter(row => Object.values(row).some(v => String(v).toLowerCase().includes(query)))
+        : data;
+
+      const tableDiv = document.createElement('div');
+      tableDiv.className = 'table-container';
+      let tableHtml = `<table><thead><tr>`;
+      headers.forEach(h => tableHtml += `<th>${h}</th>`);
+      tableHtml += `</tr></thead><tbody>`;
+      
+      filtered.forEach(row => {
+        tableHtml += `<tr>`;
+        headers.forEach(h => tableHtml += `<td>${row[h] || ''}</td>`);
+        tableHtml += `</tr>`;
+      });
+      
+      tableHtml += `</tbody></table>`;
+      tableDiv.innerHTML = tableHtml;
+      container.appendChild(tableDiv);
+    }
+  });
+}
+
+function renderVCF(file, container, query) {
+  const cards = file.content.split('END:VCARD');
+  const grid = document.createElement('div');
+  grid.className = 'contact-grid';
+  
+  cards.forEach(card => {
+    if (!card.trim()) return;
+    const name = (card.match(/^FN:(.*)$/m) || [])[1] || 'Unnamed Contact';
+    const tel = (card.match(/^TEL(?:;.*)?:(.*)$/m) || [])[1] || 'N/A';
+    const email = (card.match(/^EMAIL(?:;.*)?:(.*)$/m) || [])[1] || 'N/A';
+    const org = (card.match(/^ORG:(.*)$/m) || [])[1] || '';
+
+    if (query && !name.toLowerCase().includes(query) && !tel.includes(query)) return;
+
+    const cardEl = document.createElement('div');
+    cardEl.className = 'contact-card';
+    cardEl.innerHTML = `
+      <h4>${name}</h4>
+      <div class="contact-info"><i class="ti ti-phone"></i> ${tel}</div>
+      <div class="contact-info"><i class="ti ti-mail"></i> ${email}</div>
+      <div class="contact-info"><i class="ti ti-building"></i> ${org}</div>
+    `;
+    grid.appendChild(cardEl);
+  });
+  container.appendChild(grid);
+}
+
+function renderMD(file, container) {
+  const split = document.createElement('div');
+  split.className = 'md-editor-container';
+  
+  const editor = document.createElement('textarea');
+  editor.className = 'md-input';
+  editor.value = file.content;
+  
+  const preview = document.createElement('div');
+  preview.className = 'md-preview';
+  
+  const updatePreview = () => {
+    file.content = editor.value; // Sync with state
+    const html = marked.parse(editor.value);
+    preview.innerHTML = DOMPurify.sanitize(html);
+    // Highlight any code blocks in preview
+    preview.querySelectorAll('pre code').forEach(el => hljs.highlightElement(el));
+  };
+
+  editor.oninput = updatePreview;
+  updatePreview();
+
+  split.appendChild(editor);
+  split.appendChild(preview);
+  container.appendChild(split);
+}
+
+function renderTXT(file, container, query) {
+  const pre = document.createElement('pre');
+  const code = document.createElement('code');
+  code.textContent = file.content;
+  
+  // Syntax Auto-Detection via Highlight.js
+  pre.appendChild(code);
+  container.appendChild(pre);
+  hljs.highlightElement(code);
+  
+  // Highlight search keywords (simple implementation)
+  if (query) {
+    const regex = new RegExp(`(${query})`, 'gi');
+    code.innerHTML = code.innerHTML.replace(regex, `<mark>$1</mark>`);
+  }
+}
+
+/** HELPERS & STATE MGMT **/
+
+function setActiveFile(id) {
+  state.activeFileId = id;
+  renderUI();
+}
+
+function closeFile(id, event) {
+  if (event) event.stopPropagation();
+  state.files = state.files.filter(f => f.id !== id);
+  if (state.activeFileId === id) {
+    state.activeFileId = state.files.length > 0 ? state.files[0].id : null;
+  }
+  renderUI();
+}
+
+function toggleTheme() {
+  state.theme = state.theme === 'dark' ? 'light' : 'dark';
+  localStorage.setItem('theme', state.theme);
+  applyTheme();
+}
+
+function applyTheme() {
+  document.body.setAttribute('data-theme', state.theme);
+  const hlTheme = document.getElementById('hljs-theme');
+  hlTheme.href = state.theme === 'dark' 
+    ? "https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github-dark.min.css"
+    : "https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github.min.css";
+}
+
+let menuTargetId = null;
+function showContextMenu(e, id) {
+  e.preventDefault();
+  menuTargetId = id;
+  const menu = document.getElementById('contextMenu');
+  menu.style.display = 'block';
+  menu.style.left = e.pageX + 'px';
+  menu.style.top = e.pageY + 'px';
+}
+
+function handleMenuAction(action) {
+  if (!menuTargetId) return;
+  const file = state.files.find(f => f.id === menuTargetId);
+  
+  if (action === 'delete') {
+    closeFile(menuTargetId);
+  } else if (action === 'rename') {
+    const newName = prompt("Enter new filename:", file.name);
+    if (newName) file.name = newName;
+    renderUI();
+  } else if (action === 'export') {
+    downloadFile(menuTargetId);
+  }
+}
+
+function downloadFile(id) {
+  const file = state.files.find(f => f.id === id);
+  const blob = new Blob([file.content], { type: 'text/plain' });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = file.name;
+  a.click();
+}
+
+</script>
+
+</body>
+</html>
