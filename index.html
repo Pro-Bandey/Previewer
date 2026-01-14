@@ -1,159 +1,234 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
-	<meta charset="utf-8">
-	<title>GitHub &amp; BitBucket HTML Preview</title>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Git HTML Previewer (Fixed Assets)</title>
 	<style>
-	body {
-		font: 12px 'Helvetica Neue', Helvetica, Arial, freesans, clean, sans-serif;
-		color: #333;
-	}
-	h1 {
-		font-size: 20px;
-	}
-	a {
-		color: #666;
-	}
-	#previewform {
-		display: none;
-		padding: 20px; 
-		text-align: center;
-	}
-	strong {
-		color: #333;
-		background-color: #FAFFA6;
-		padding: 0.1em;
-	}
-	#footer {
-		margin: 20px 0;
-		font-size: 10px;
-		color: #666;
-	}
+		:root {
+			--primary: #2da44e;
+			--bg: #f6f8fa;
+			--text: #24292f;
+			--border: #d0d7de;
+			--card-bg: #ffffff;
+			--error: #cf222e;
+		}
+
+		body {
+			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+			background-color: var(--bg);
+			color: var(--text);
+			margin: 0;
+			display: flex;
+			flex-direction: column;
+			height: 100vh;
+			overflow: hidden;
+		}
+
+		#app-header {
+			background: var(--card-bg);
+			border-bottom: 1px solid var(--border);
+			padding: 1rem 2rem;
+			display: flex;
+			flex-direction: column;
+			gap: 10px;
+			box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+			z-index: 10;
+		}
+
+		h1 {
+			margin: 0;
+			font-size: 1.2rem;
+			display: flex;
+			align-items: center;
+			gap: 10px;
+		}
+
+		h1 span {
+			font-size: 0.8em;
+			color: #666;
+			font-weight: normal;
+		}
+
+		.input-group {
+			display: flex;
+			gap: 10px;
+		}
+
+		input[type="url"] {
+			flex: 1;
+			padding: 8px 12px;
+			border: 1px solid var(--border);
+			border-radius: 6px;
+			font-size: 14px;
+		}
+
+		button {
+			background-color: var(--primary);
+			color: white;
+			border: 1px solid rgba(27, 31, 35, 0.15);
+			border-radius: 6px;
+			padding: 8px 16px;
+			font-weight: 600;
+			cursor: pointer;
+			transition: 0.2s;
+		}
+
+		button:hover {
+			filter: brightness(0.95);
+		}
+
+		button:disabled {
+			background-color: #94d3a2;
+			cursor: not-allowed;
+		}
+
+		.settings-bar {
+			display: flex;
+			align-items: center;
+			gap: 15px;
+			font-size: 12px;
+			color: #57606a;
+		}
+
+		#preview-container {
+			flex: 1;
+			position: relative;
+			background: white;
+		}
+
+		iframe {
+			width: 100%;
+			height: 100%;
+			border: none;
+			display: block;
+		}
+
+		#overlay {
+			position: absolute;
+			top: 0;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			background: rgba(255, 255, 255, 0.95);
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			text-align: center;
+			z-index: 5;
+		}
+
+		.hidden {
+			display: none !important;
+		}
+
+		.loader {
+			border: 4px solid #f3f3f3;
+			border-top: 4px solid var(--primary);
+			border-radius: 50%;
+			width: 40px;
+			height: 40px;
+			animation: spin 1s linear infinite;
+			margin-bottom: 15px;
+		}
+
+		.progress-log {
+			font-family: monospace;
+			font-size: 12px;
+			color: #666;
+			margin-top: 10px;
+			height: 20px;
+		}
+
+		.error-msg {
+			color: var(--error);
+			background: #ffebe9;
+			padding: 1rem;
+			border-radius: 6px;
+			border: 1px solid rgba(255, 129, 130, 0.4);
+			max-width: 600px;
+		}
+
+		.welcome-msg {
+			max-width: 600px;
+			line-height: 1.6;
+			color: #555;
+		}
+
+		code {
+			background: rgba(175, 184, 193, 0.2);
+			padding: 0.2em 0.4em;
+			border-radius: 6px;
+		}
+
+		@keyframes spin {
+			0% {
+				transform: rotate(0deg);
+			}
+
+			100% {
+				transform: rotate(360deg);
+			}
+		}
+
+		#preview-toolbar {
+			background: #24292f;
+			color: white;
+			padding: 5px 15px;
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			font-size: 12px;
+		}
+
+		#preview-toolbar a {
+			color: #58a6ff;
+			text-decoration: none;
+		}
+
+		#preview-toolbar a:hover {
+			text-decoration: underline;
+		}
 	</style>
 </head>
+
 <body>
-	<form id="previewform" onsubmit="location.href='/?'+this.file.value;return false">
-		<h1>GitHub &amp; BitBucket HTML Preview</h1>
-		<p>
-			Enter URL of the HTML file to preview:
-			<input type="url" id="file" value="" placeholder="e.g. https://github.com/user/repo/blob/master/index.html" size="60" autofocus>
-			<input type="submit" value="Preview">
-		</p>
-		<p>or prepend to the URL: <code><strong>http://htmlpreview.github.io/?</strong>https://github.com/twbs/bootstrap/blob/gh-pages/2.3.2/index.html</code></p>
-		<p id="footer">Developed by <a href="https://github.com/niutech">niu tech</a> | Contribute on <a href="https://github.com/htmlpreview/htmlpreview.github.com">GitHub</a></p>
-	</form>
-	<script>
-		(function () {
-			var previewForm = document.getElementById('previewform');
-			var url = location.search.substring(1).replace(/\/\/github\.com/, '//raw.githubusercontent.com').replace(/\/blob\//, '/'); //Get URL of the raw file
-		
-			var replaceAssets = function () {
-				var frame, a, link, links = [], script, scripts = [], i, href, src;
-				//Framesets
-				if (document.querySelectorAll('frameset').length)
-					return; //Don't replace CSS/JS if it's a frameset, because it will be erased by document.write()
-				//Frames
-				frame = document.querySelectorAll('iframe[src],frame[src]');
-				for (i = 0; i < frame.length; ++i) {
-					src = frame[i].src; //Get absolute URL
-					if (src.indexOf('//raw.githubusercontent.com') > 0 || src.indexOf('//bitbucket.org') > 0) { //Check if it's from raw.github.com or bitbucket.org
-						frame[i].src = '//' + location.hostname + location.pathname + '?' + src; //Then rewrite URL so it can be loaded using CORS proxy
-					}
-				}
-				//Links
-				a = document.querySelectorAll('a[href]');
-				for (i = 0; i < a.length; ++i) {
-					href = a[i].href; //Get absolute URL
-					if (href.indexOf('#') > 0) { //Check if it's an anchor
-						a[i].href = '//' + location.hostname + location.pathname + location.search + '#' + a[i].hash.substring(1); //Then rewrite URL with support for empty anchor
-					} else if ((href.indexOf('//raw.githubusercontent.com') > 0 || href.indexOf('//bitbucket.org') > 0) && (href.indexOf('.html') > 0 || href.indexOf('.htm') > 0)) { //Check if it's from raw.github.com or bitbucket.org and to HTML files
-						a[i].href = '//' + location.hostname + location.pathname + '?' + href; //Then rewrite URL so it can be loaded using CORS proxy
-					}
-				}
-				//Stylesheets
-				link = document.querySelectorAll('link[rel=stylesheet]');
-				for (i = 0; i < link.length; ++i) {
-					href = link[i].href; //Get absolute URL
-					if (href.indexOf('//raw.githubusercontent.com') > 0 || href.indexOf('//bitbucket.org') > 0) { //Check if it's from raw.github.com or bitbucket.org
-						links.push(fetchProxy(href, null, 0)); //Then add it to links queue and fetch using CORS proxy
-					}
-				}
-				Promise.all(links).then(function (res) {
-					for (i = 0; i < res.length; ++i) {
-						loadCSS(res[i]);
-					}
-				});
-				//Scripts
-				script = document.querySelectorAll('script[type="text/htmlpreview"]');
-				for (i = 0; i < script.length; ++i) {
-					src = script[i].src; //Get absolute URL
-					if (src.indexOf('//raw.githubusercontent.com') > 0 || src.indexOf('//bitbucket.org') > 0) { //Check if it's from raw.github.com or bitbucket.org
-						scripts.push(fetchProxy(src, null, 0)); //Then add it to scripts queue and fetch using CORS proxy
-					} else {
-						script[i].removeAttribute('type');
-						scripts.push(script[i].innerHTML); //Add inline script to queue to eval in order
-					}
-				}
-				Promise.all(scripts).then(function (res) {
-					for (i = 0; i < res.length; ++i) {
-						loadJS(res[i]);
-					}
-					document.dispatchEvent(new Event('DOMContentLoaded', {bubbles: true, cancelable: true})); //Dispatch DOMContentLoaded event after loading all scripts
-				});
-			};
-		
-			var loadHTML = function (data) {
-				if (data) {
-					data = data.replace(/<head([^>]*)>/i, '<head$1><base href="' + url + '">').replace(/<script(\s*src=["'][^"']*["'])?(\s*type=["'](text|application)\/javascript["'])?/gi, '<script type="text/htmlpreview"$1'); //Add <base> just after <head> and replace <script type="text/javascript"> with <script type="text/htmlpreview">
-					setTimeout(function () {
-						document.open();
-						document.write(data);
-						document.close();
-						replaceAssets();
-					}, 10); //Delay updating document to have it cleared before
-				}
-			};
-		
-			var loadCSS = function (data) {
-				if (data) {
-					var style = document.createElement('style');
-					style.innerHTML = data;
-					document.head.appendChild(style);
-				}
-			};
-		
-			var loadJS = function (data) {
-				if (data) {
-					var script = document.createElement('script');
-					script.innerHTML = data;
-					document.body.appendChild(script);
-				}
-			};
-			
-			var fetchProxy = function (url, options, i) {
-				var proxy = [
-					'', // try without proxy first
-					'https://api.codetabs.com/v1/proxy/?quest='
-				];
-				return fetch(proxy[i] + url, options).then(function (res) {
-					if (!res.ok) throw new Error('Cannot load ' + url + ': ' + res.status + ' ' + res.statusText);
-					return res.text();
-				}).catch(function (error) {
-					if (i === proxy.length - 1)
-						throw error;
-					return fetchProxy(url, options, i + 1);
-				})
-			};
-		
-			if (url && url.indexOf(location.hostname) < 0)
-				fetchProxy(url, null, 0).then(loadHTML).catch(function (error) {
-					console.error(error);
-					previewForm.style.display = 'block';
-					previewForm.innerText = error;
-				});
-			else
-				previewForm.style.display = 'block';
-		})()
-	</script>
+	<div id="app-header">
+		<h1>Git HTML Preview <span>(Inlines CSS/JS for better compatibility)</span></h1>
+		<form id="url-form" class="input-group"><input type="url" id="file-url"
+				placeholder="Paste URL (GitHub, GitLab, Bitbucket)" required autofocus><button type="submit"
+				id="btn-preview">Preview</button></form>
+		<div class="settings-bar"><label><input type="checkbox" id="chk-js" checked>Enable JavaScript</label>
+			<div id="history-container"><strong>History:</strong><span id="history-list"></span></div>
+		</div>
+	</div>
+	<div id="preview-container">
+		<div id="preview-toolbar" class="hidden"><span id="status-text">Preview Mode</span><a href="#"
+				id="link-original" target="_blank">Open Original Source</a></div><iframe id="preview-frame"
+			sandbox="allow-forms allow-modals allow-pointer-lock allow-popups allow-same-origin allow-scripts"></iframe>
+		<div id="overlay">
+			<div id="welcome-view" class="welcome-msg">
+				<h2>Ready to Preview</h2>
+				<p>Paste a URL from GitHub, GitLab, or BitBucket.</p>
+				<p>This tool <b>downloads</b>assets and <b>embeds</b>them directly to ensure they load.</p>
+			</div>
+			<div id="loading-view" class="hidden">
+				<div class="loader"></div>
+				<h3 id="loading-text">Fetching resources...</h3>
+				<div id="progress-log" class="progress-log"></div>
+			</div>
+			<div id="error-view" class="hidden">
+				<div class="error-msg">
+					<h3>Something went wrong</h3>
+					<p id="error-message">Error details here.</p><button onclick="location.reload()"
+						style="margin-top:10px; background:#cf222e; border:none; padding:5px 10px; color:white; cursor:pointer;">Reset</button>
+				</div>
+			</div>
+		</div>
+	</div>
+	<script>const PROXIES = ['https://api.codetabs.com/v1/proxy/?quest=', 'https://corsproxy.io/?', 'https://api.allorigins.win/raw?url=']; const el = { form: document.getElementById('url-form'), input: document.getElementById('file-url'), iframe: document.getElementById('preview-frame'), overlay: document.getElementById('overlay'), welcome: document.getElementById('welcome-view'), loading: document.getElementById('loading-view'), loadingText: document.getElementById('loading-text'), progressLog: document.getElementById('progress-log'), error: document.getElementById('error-view'), errorMsg: document.getElementById('error-message'), toolbar: document.getElementById('preview-toolbar'), linkOriginal: document.getElementById('link-original'), chkJs: document.getElementById('chk-js'), historyList: document.getElementById('history-list') }; (function init() { const params = new URLSearchParams(window.location.search); let queryUrl = params.get('url') || window.location.search.substring(1); renderHistory(); if (queryUrl) { if (queryUrl.startsWith('url=')) queryUrl = queryUrl.split('=')[1]; el.input.value = queryUrl; startPreview(queryUrl); } el.form.addEventListener('submit', (e) => { e.preventDefault(); const url = el.input.value.trim(); if (url) { window.history.pushState({}, '', '?' + url); startPreview(url); } }); })(); async function startPreview(url) { updateUIState('loading', 'Initializing...'); saveToHistory(url); try { const rawUrl = convertToRawUrl(url); el.linkOriginal.href = url; const basePath = rawUrl.substring(0, rawUrl.lastIndexOf('/') + 1); updateUIState('loading', 'Fetching HTML file...'); const htmlContent = await fetchWithFallback(rawUrl); updateUIState('loading', 'Downloading and inlining assets (CSS/JS)...'); const processedBlobUrl = await processAndInlineAssets(htmlContent, basePath); loadIframe(processedBlobUrl); } catch (err) { console.error(err); updateUIState('error', err.message); } } async function processAndInlineAssets(html, basePath) { const parser = new DOMParser(); const doc = parser.parseFromString(html, 'text/html'); const getAbsoluteUrl = (rel) => { if (!rel) return null; if (rel.startsWith('http') || rel.startsWith('//')) return rel; if (rel.startsWith('data:') || rel.startsWith('#')) return null; try { return new URL(rel, basePath).href; } catch (e) { return null; } }; const links = Array.from(doc.querySelectorAll('link[rel="stylesheet"]')); let loadedCount = 0; const stylePromises = links.map(async (link) => { const href = link.getAttribute('href'); const absUrl = getAbsoluteUrl(href); if (absUrl) { try { el.progressLog.innerText = `Loading CSS: ${href.split('/').pop()}...`; const cssContent = await fetchWithFallback(absUrl); const fixedCss = fixCssUrls(cssContent, absUrl); const styleTag = doc.createElement('style'); styleTag.innerHTML = fixedCss; link.replaceWith(styleTag); } catch (e) { console.warn('Failed to load CSS:', absUrl); link.href = PROXIES[0] + encodeURIComponent(absUrl); } } }); const scripts = Array.from(doc.querySelectorAll('script[src]')); const scriptPromises = scripts.map(async (script) => { if (!el.chkJs.checked) { script.remove(); return; } const src = script.getAttribute('src'); const absUrl = getAbsoluteUrl(src); if (absUrl) { try { el.progressLog.innerText = `Loading JS: ${src.split('/').pop()}...`; const jsContent = await fetchWithFallback(absUrl); script.removeAttribute('src'); script.innerHTML = jsContent; } catch (e) { console.warn('Failed to load JS:', absUrl); } } }); await Promise.all([...stylePromises, ...scriptPromises]); doc.querySelectorAll('img, iframe, audio, video').forEach(elem => { const src = elem.getAttribute('src'); const absUrl = getAbsoluteUrl(src); if (absUrl) { elem.setAttribute('src', PROXIES[0] + encodeURIComponent(absUrl)); } }); doc.querySelectorAll('a').forEach(a => { const href = a.getAttribute('href'); if (href && !href.startsWith('#')) { a.setAttribute('target', '_blank'); const absUrl = getAbsoluteUrl(href); } }); const base = doc.createElement('base'); base.href = basePath; doc.head.prepend(base); return URL.createObjectURL(new Blob([doc.documentElement.outerHTML], { type: 'text/html' })); } function fixCssUrls(css, cssUrl) { const cssBasePath = cssUrl.substring(0, cssUrl.lastIndexOf('/') + 1); return css.replace(/url\((['"]?)(.*?)\1\)/g, (match, quote, url) => { if (url.startsWith('data:') || url.startsWith('http') || url.startsWith('//')) return match; try { const abs = new URL(url, cssBasePath).href; return `url(${PROXIES[0] + encodeURIComponent(abs)})`; } catch (e) { return match; } }); } async function fetchWithFallback(url) { let lastError; for (const proxy of PROXIES) { try { const target = proxy + encodeURIComponent(url); const res = await fetch(target); if (!res.ok) throw new Error(`Status ${res.status}`); return await res.text(); } catch (e) { lastError = e; } } throw new Error(`Failed to load resource: ${url}. (${lastError})`); } function convertToRawUrl(url) { url = url.split('?')[0]; if (url.includes('github.com')) { return url.replace('github.com', 'raw.githubusercontent.com').replace(/\/blob\//, '/'); } if (url.includes('gitlab.com')) return url.replace('/blob/', '/raw/'); if (url.includes('bitbucket.org')) return url.replace('/src/', '/raw/'); return url; } function loadIframe(blobUrl) { el.iframe.src = blobUrl; updateUIState('success'); } function updateUIState(state, message = '') { if (state === 'loading') { el.overlay.classList.remove('hidden'); el.welcome.classList.add('hidden'); el.error.classList.add('hidden'); el.loading.classList.remove('hidden'); el.loadingText.textContent = message; el.toolbar.classList.add('hidden'); } else if (state === 'error') { el.overlay.classList.remove('hidden'); el.loading.classList.add('hidden'); el.welcome.classList.add('hidden'); el.error.classList.remove('hidden'); el.errorMsg.textContent = message; } else if (state === 'success') { el.overlay.classList.add('hidden'); el.toolbar.classList.remove('hidden'); } } function saveToHistory(url) { let hist = JSON.parse(localStorage.getItem('preview_history') || '[]'); hist = hist.filter(h => h !== url); hist.unshift(url); if (hist.length > 5) hist.pop(); localStorage.setItem('preview_history', JSON.stringify(hist)); renderHistory(); } function renderHistory() { const hist = JSON.parse(localStorage.getItem('preview_history') || '[]'); el.historyList.innerHTML = ''; hist.forEach(url => { const s = document.createElement('span'); s.textContent = url.split('/').pop() || 'link'; s.title = url; s.style.cssText = "background:#eee; padding:2px 8px; border-radius:10px; cursor:pointer; margin-right:5px; font-size:11px;"; s.onclick = () => { el.input.value = url; startPreview(url); }; el.historyList.appendChild(s); }); } </script>
 </body>
+
 </html>
