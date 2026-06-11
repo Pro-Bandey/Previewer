@@ -3,23 +3,23 @@
   "name": "GitPreview Dev",
   "version": "1.0",
   "description": "Preview HTML files from GitHub in a Sandbox or Sidebar.",
-  "permissions": [
-    "activeTab",
-    "scripting",
-    "sidePanel",
-    "storage"
-  ],
-  "host_permissions": [
-    "https://github.com/*",
-    "https://raw.githubusercontent.com/*"
-  ],
+  "homepage_url": "https://Pro-Bandey.github.io/Projects/?pro=Previewer",
+
   "action": {
     "default_popup": "ui/popup.html",
     "default_title": "GitPreview"
   },
+
   "side_panel": {
     "default_path": "ui/side.html"
   },
+
+  "permissions": ["activeTab", "scripting", "sidePanel", "storage"],
+
+  "host_permissions": [
+    "https://github.com/*",
+    "https://raw.githubusercontent.com/*"
+  ],
   "content_scripts": [
     {
       "matches": ["https://github.com/*"],
@@ -27,6 +27,7 @@
       "run_at": "document_idle"
     }
   ],
+
   "background": {
     "service_worker": "scripts/background.js"
   }
